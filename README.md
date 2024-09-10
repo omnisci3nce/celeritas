@@ -1,1 +1,5 @@
-# celeritas
+# Celeritas
+
+## Design Goals
+
+## Feature Goals

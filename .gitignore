@@ -24,3 +24,4 @@
 *.dylib
 
 .DS_Store
+*.bin
