@@ -1,10 +1,10 @@
+// Render Abstraction Layer - this is a thin layer that smoothes over differences between Graphics APIs.
+
 package ral
 
 import "core:mem"
 import "vendor:glfw"
 import vk "vendor:vulkan"
-
-// Render Abstraction Layer - this is a thin layer that smoothes over differences between Graphics APIs.
 
 // The backends supported by Celeritas
 APIBackend :: enum {
@@ -32,7 +32,9 @@ BufferFlags :: bit_set[BufferFlag]
 BufferHandle :: distinct u64
 
 // Initialise the RAL backend
-backend_init :: proc(window: glfw.WindowHandle) {}
+backend_init :: proc(window: glfw.WindowHandle) {
+    _backend_init(window)
+}
 
 // Create a GPU-backed buffer
 gpu_buffer_create :: proc(size: u64, type: BufferType, flags: BufferFlags) -> GPU_Buffer {
@@ -42,6 +44,15 @@ gpu_buffer_create :: proc(size: u64, type: BufferType, flags: BufferFlags) -> GP
 when GPU_API == .Vulkan {
 	GPU_Buffer :: struct {
 		handle: vk.Handle,
+	}
+
+	_backend_init :: proc (window: glfw.WindowHandle) {
+	    // TODO: VkApplicationInfo
+	    // TODO: VkInstanceCreateInfo
+	    // TODO: extensions
+		// TODO: create logical device
+		// TODO: create physical device
+		// TODO: create swapchain
 	}
 
 	_gpu_buffer_create :: proc(size: u64, type: BufferType, flags: BufferFlags) -> GPU_Buffer {
