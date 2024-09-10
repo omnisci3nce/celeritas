@@ -15,8 +15,8 @@ Engine :: struct {
 engine_init :: proc(engine: ^Engine) {
 	fmt.println("Engine init")
 
-	if(!glfw.Init()){
-		fmt.println("Failed to initialize GLFW")
+	if !glfw.Init() {
+		fmt.println("Failed to initialise GLFW")
 		return
 	}
 
