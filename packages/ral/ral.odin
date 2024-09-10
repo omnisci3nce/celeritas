@@ -5,10 +5,12 @@ import vk "vendor:vulkan"
 
 // Render Abstraction Layer - this is a thin layer that smoothes over differences between Graphics APIs.
 
+// The backends supported by Celeritas
 APIBackend :: enum {
 	Vulkan,
 }
 
+// TEMP: hardcoded for now as we don't actually do *anything* yet
 GPU_API :: APIBackend.Vulkan
 
 BufferType :: enum {
@@ -28,8 +30,10 @@ BufferFlags :: bit_set[BufferFlag]
 // A unique handle to a `GPU_Buffer` allocated on a pool
 BufferHandle :: distinct u64
 
-ral_init :: proc() {}
+// Initialise the RAL backend
+backend_init :: proc() {}
 
+// Create a GPU-backed buffer
 gpu_buffer_create :: proc(size: u64, type: BufferType, flags: BufferFlags) -> GPU_Buffer {
 	return _gpu_buffer_create(size, type, flags)
 }
