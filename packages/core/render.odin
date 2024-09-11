@@ -33,6 +33,3 @@ Mesh :: struct {
     geo: Maybe(Geometry) // nil if the CPU-side data has been freed
 }
 
-mesh_create_sphere :: proc(side_size: f64) -> Mesh {
-    unimplemented()
-}

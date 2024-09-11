@@ -6,6 +6,12 @@ BufferHandle :: distinct u64
 // A unique handle to a `GPU_Texture` resource allocated on a pool
 TextureHandle :: distinct u64
 
+PipelineHandle :: distinct u64
+
+Renderpass :: struct {
+  // TODO
+}
+
 BufferType :: enum {
 	Vertex,
 	Index,

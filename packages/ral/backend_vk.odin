@@ -8,6 +8,10 @@ when GPU_API == .Vulkan {
 		handle: vk.Handle,
 	}
 
+  GPU_Texture :: struct {
+
+  }
+
 	_backend_init :: proc (window: glfw.WindowHandle) {
 		// TODO: VkApplicationInfo
 		// TODO: VkInstanceCreateInfo
@@ -31,6 +35,18 @@ when GPU_API == .Vulkan {
 	}
 
   _gpu_buffer_upload :: proc(handle: BufferHandle, data: []u8) {
+    unimplemented()
+  }
+
+  _gpu_texture_create :: proc(desc: TextureDesc, create_view: bool, data: []u8) -> TextureHandle {
+    unimplemented()
+  }
+  
+  _gpu_texture_alloc :: proc() -> (^GPU_Texture, TextureHandle) {
+    unimplemented()
+  }
+  
+  _gpu_texture_destroy :: proc(handle: TextureHandle) {
     unimplemented()
   }
 }
