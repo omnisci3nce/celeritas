@@ -21,3 +21,5 @@ pool_create :: proc($T: typeid, capacity: u64) -> Pool(T) {
 
   return pool
 }
+
+pool_free_all :: proc(pool: ^Pool($T)) {}
