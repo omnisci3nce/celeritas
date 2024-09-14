@@ -21,13 +21,10 @@ engine_init :: proc(engine: ^Engine) {
 	}
 
 	glfw.WindowHint(glfw.RESIZABLE, glfw.FALSE) // TODO: Make our renderer resizable on the fly
-	when ral.GPU_API == .Vulkan {
+	when ral.GPU_API == .Vulkan || ral.GPU_API == .Metal {
 		glfw.WindowHint(glfw.CLIENT_API, glfw.NO_API)
 	}
 	fmt.println("Created window")
-
-	ral.backend_init(engine.window)
-	fmt.println("Initialised RAL backend")
 
 	engine.window = glfw.CreateWindow(
 		WINDOW_WIDTH,
@@ -41,6 +38,17 @@ engine_init :: proc(engine: ^Engine) {
 		return
 	}
 
+	ral.backend_init(engine.window)
+	fmt.println("Initialised RAL backend")
+
 	glfw.MakeContextCurrent(engine.window)
 	glfw.SwapInterval(1)
+
+	glfw.SetKeyCallback(engine.window, handle_keys)
+}
+
+handle_keys :: proc "c" (window: glfw.WindowHandle, key: i32, scancode: i32, action: i32, mods: i32) {
+	if key == glfw.KEY_ESCAPE {
+		glfw.SetWindowShouldClose(window, true)
+	}
 }

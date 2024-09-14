@@ -6,9 +6,10 @@ import "core:mem"
 import "vendor:glfw"
 import vk "vendor:vulkan"
 
-// The backends supported by Celeritas
+// The backends currently supported by Celeritas
 APIBackend :: enum {
-    Vulkan,
+	Vulkan,
+	Metal,
 }
 
 // TEMP: hardcoded for now as we don't actually do *anything* yet
