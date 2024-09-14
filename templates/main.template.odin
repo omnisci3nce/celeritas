@@ -14,7 +14,7 @@ main :: proc () {
   should_exit := false
 
   for {
-    if should_exit {
+    if glfw.WindowShouldClose(engine.window) {
       break
     }
     glfw.PollEvents()
