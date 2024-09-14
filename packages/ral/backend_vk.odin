@@ -2,23 +2,93 @@ package ral
 
 import "vendor:glfw"
 import vk "vendor:vulkan"
+import "../../deps/vkb"
+
+MAX_FRAMES_IN_FLIGHT :: 2
+MINIMUM_API_VERSION :: vk.API_VERSION_1_3
+
+@private
+VulkanCtx :: struct {
+	instance: ^vkb.Instance,
+	surface: vk.SurfaceKHR,
+	physical_device: ^vkb.Physical_Device,
+	// Logical Device
+	device: ^vkb.Device,
+	default_swapchain: ^vkb.Swapchain
+}
+
+ctx: VulkanCtx
+
+GeneralError :: enum {
+	None,
+	GLFWError,
+	Vulkan_Error,
+}
+
+VkBackendError :: union #shared_nil {
+	// TODO: GeneralError, resource error (?)
+	GeneralError,
+	vkb.Error
+}
 
 when GPU_API == .Vulkan {
 	GPU_Buffer :: struct {
 		handle: vk.Handle,
+		memory: vk.DeviceMemory,
+		size: u64
 	}
 
   GPU_Texture :: struct {
-
+		handle: vk.Image,
+		memory: vk.DeviceMemory,
+		size: u64
   }
 
-	_backend_init :: proc (window: glfw.WindowHandle) {
-		// TODO: VkApplicationInfo
-		// TODO: VkInstanceCreateInfo
+	_backend_init :: proc (window: glfw.WindowHandle) -> (err: VkBackendError) {
+		instance_builder, instance_builder_err := vkb.init_instance_builder()
+    if instance_builder_err != nil do return
+    defer vkb.destroy_instance_builder(&instance_builder)
+
+		// Enable `VK_LAYER_KHRONOS_validation` layer
+		vkb.instance_request_validation_layers(&instance_builder)
+		// Enable debug reporting with a default messenger callback
+		vkb.instance_use_default_debug_messenger(&instance_builder)
+
+		// Create VkInstance (https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkInstance.html)
+		ctx.instance = vkb.build_instance(&instance_builder) or_return
+		defer if err != nil do vkb.destroy_instance(ctx.instance)
+
 		// TODO: extensions
-		// TODO: create logical device
-		// TODO: create physical device
-		// TODO: create swapchain
+
+		glfw_err := glfw.CreateWindowSurface(ctx.instance.ptr, window, nil, &ctx.surface)
+		if glfw_err != .SUCCESS {
+			return .GLFWError
+		}
+
+		// Create VkPhysicalDevice (https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkPhysicalDevice.html)
+		selector := vkb.init_physical_device_selector(ctx.instance) or_return
+		defer vkb.destroy_physical_device_selector(&selector)
+
+		vkb.selector_set_minimum_version(&selector, MINIMUM_API_VERSION)
+		vkb.selector_set_surface(&selector, ctx.surface)
+
+		ctx.physical_device = vkb.select_physical_device(&selector) or_return
+		defer if err != nil do vkb.destroy_physical_device(ctx.physical_device)
+
+		// Create VkDevice (https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkDevice.html)
+		device_builder, device_builder_err := vkb.init_device_builder(ctx.physical_device)
+		if device_builder_err != nil do return // error
+		defer vkb.destroy_device_builder(&device_builder)
+
+		// Create VkSwapchainKHR (https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkSwapchainKHR.html)
+		swapchain_builder, swapchain_builder_err := vkb.init_swapchain_builder(ctx.device)
+		if swapchain_builder_err != nil do return // error
+		defer vkb.destroy_swapchain_builder(&swapchain_builder)
+
+		ctx.default_swapchain = vkb.build_swapchain(&swapchain_builder) or_return // default is 888 SRGB colorspace, Mailbox present mode.
+		if err != nil do return // error
+
+		return
 	}
 
 	_backend_shutdown :: proc() {
