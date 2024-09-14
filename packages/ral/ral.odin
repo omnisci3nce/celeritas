@@ -12,5 +12,12 @@ APIBackend :: enum {
 	Metal,
 }
 
-// TEMP: hardcoded for now as we don't actually do *anything* yet
 GPU_API :: APIBackend.Vulkan
+
+// Set RAL backend based on Operating System
+// when ODIN_OS == .Darwin {
+// 	GPU_API :: APIBackend.Metal
+// } else {
+// 	GPU_API :: APIBackend.Vulkan
+// }
+// TODO: Figure out how to get the above to work. Other files can't pick up the GPU_API constant...
