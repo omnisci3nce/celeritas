@@ -3,6 +3,7 @@ package ral
 import "vendor:glfw"
 import vk "vendor:vulkan"
 import "../../deps/vkb"
+import "../utils"
 
 MAX_FRAMES_IN_FLIGHT :: 2
 MINIMUM_API_VERSION :: vk.API_VERSION_1_3
@@ -14,7 +15,13 @@ VulkanCtx :: struct {
 	physical_device: ^vkb.Physical_Device,
 	// Logical Device
 	device: ^vkb.Device,
-	default_swapchain: ^vkb.Swapchain
+	default_swapchain: ^vkb.Swapchain,
+
+	/* Pools */
+	pipelines: utils.Pool(Pipeline),
+	renderpasses: utils.Pool(Renderpass),
+	buffers: utils.Pool(GPU_Buffer),
+	textures: utils.Pool(GPU_Texture),
 }
 
 ctx: VulkanCtx
@@ -32,6 +39,17 @@ VkBackendError :: union #shared_nil {
 }
 
 when GPU_API == .Vulkan {
+	Renderpass :: struct {
+
+	}
+
+	// Graphics Pipeline
+	Pipeline :: struct {
+
+	}
+
+	// TODO: ComputePipeline
+
 	GPU_Buffer :: struct {
 		handle: vk.Handle,
 		memory: vk.DeviceMemory,
@@ -51,14 +69,13 @@ when GPU_API == .Vulkan {
 
 		// Enable `VK_LAYER_KHRONOS_validation` layer
 		vkb.instance_request_validation_layers(&instance_builder)
-		// Enable debug reporting with a default messenger callback
 		vkb.instance_use_default_debug_messenger(&instance_builder)
+
+		// TODO: other extensions
 
 		// Create VkInstance (https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkInstance.html)
 		ctx.instance = vkb.build_instance(&instance_builder) or_return
 		defer if err != nil do vkb.destroy_instance(ctx.instance)
-
-		// TODO: extensions
 
 		glfw_err := glfw.CreateWindowSurface(ctx.instance.ptr, window, nil, &ctx.surface)
 		if glfw_err != .SUCCESS {
@@ -87,6 +104,8 @@ when GPU_API == .Vulkan {
 
 		ctx.default_swapchain = vkb.build_swapchain(&swapchain_builder) or_return // default is 888 SRGB colorspace, Mailbox present mode.
 		if err != nil do return // error
+
+		ctx.buffers = utils.pool_create(GPU_Buffer, 256)
 
 		return
 	}
@@ -119,4 +138,12 @@ when GPU_API == .Vulkan {
   _gpu_texture_destroy :: proc(handle: TextureHandle) {
     unimplemented()
   }
+
+	_renderpass_create :: proc(desc: RenderpassDesc) -> ^Renderpass {
+		unimplemented()
+	}
+	
+	_pipeline_create :: proc(desc: GraphicsPipelineDesc) -> ^Pipeline {
+		unimplemented()
+	}
 }
