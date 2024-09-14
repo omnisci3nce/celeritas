@@ -5,9 +5,12 @@ package core
 import "core:math/linalg"
 import "../ral"
 
+// NOTE(omni): Do we want to use f32 or f64 by default? I'm not sure we should really care at this point
+//             but at least with these type aliases we can easily change them later.
 Vec2 :: linalg.Vector2f64
 Vec3 :: linalg.Vector3f64
 Vec4 :: linalg.Vector4f64
+Quat :: linalg.Quaternionf64
 
 Static3DVertex :: struct {
 	position: Vec3,
@@ -33,3 +36,8 @@ Mesh :: struct {
     geo: Maybe(Geometry) // nil if the CPU-side data has been freed
 }
 
+Camera :: struct {
+    position: Vec3,
+    rotation: Quat,
+    fov: f64
+}
