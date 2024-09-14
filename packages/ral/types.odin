@@ -8,7 +8,11 @@ TextureHandle :: distinct u64
 
 PipelineHandle :: distinct u64
 
-Renderpass :: struct {
+RenderpassDesc :: struct {
+  // TODO
+}
+
+GraphicsPipelineDesc :: struct {
   // TODO
 }
 

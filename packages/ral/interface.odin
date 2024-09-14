@@ -42,6 +42,16 @@ gpu_texture_destroy :: proc(handle: TextureHandle) {
   _gpu_texture_destroy(handle)
 }
 
+// --- Backend resources
+
+renderpass_create :: proc(desc: RenderpassDesc) -> ^Renderpass {
+  return _renderpass_create(desc)
+}
+
+pipeline_create :: proc(desc: GraphicsPipelineDesc) -> ^Pipeline {
+  return _pipeline_create(desc)
+}
+
 // --- Render commands
 
 CmdEncoder :: struct {}
@@ -67,11 +77,7 @@ encode_draw_indexed_tris :: proc(enc: ^CmdEncoder, index_count: u64) {
   unimplemented()
 }
 
-renderpass_run :: proc(rpass: ^Renderpass, recording: proc(encoder: ^CmdEncoder)) -> CmdBuffer {
-  unimplemented()
-}
-
-renderpass_submit :: proc(cmd_buf: CmdBuffer) {
+renderpass_run_with :: proc(rpass: ^Renderpass, recording: proc(encoder: ^CmdEncoder)) -> CmdBuffer {
   unimplemented()
 }
 
