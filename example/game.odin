@@ -13,7 +13,7 @@ GameData :: struct {
 game_init :: proc() -> GameData {
 
   cube_geo := core.cube_geo({2,2,2})
-  cube_mesh := create_mesh(cube_geo)
+  cube_mesh := core.create_mesh(cube_geo, false)
 
   return GameData{}
 }
