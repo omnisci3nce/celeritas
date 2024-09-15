@@ -28,8 +28,23 @@ Geometry :: struct {
 }
 
 Mesh :: struct {
-    vertex_buffer: ral.GPU_Buffer,
-    index_buffer: ral.GPU_Buffer,
+    vertex_buffer: ral.BufferHandle,
+    index_buffer: ral.BufferHandle,
     geo: Maybe(Geometry) // nil if the CPU-side data has been freed
 }
 
+create_mesh :: proc(geo: Geometry, free_on_upload: bool) -> Mesh {
+    // create vertex buffer
+    size := uint(len(geo.vertices.inner) * size_of(Static3DVertex))
+    vbuf := ral.gpu_buffer_create(size, .Vertex, .DeviceLocal)
+
+    // create index buffer
+    ibuf := ral.gpu_buffer_create(uint(len(geo.indices) * size_of(u32)), .Index, .DeviceLocal)
+
+    // (optional) free cpu-side vertex data
+
+    return Mesh {
+        vertex_buffer = vbuf,
+        index_buffer = ibuf,
+    }
+}

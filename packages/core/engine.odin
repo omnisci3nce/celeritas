@@ -47,6 +47,8 @@ engine_init :: proc(engine: ^Engine) {
 	glfw.SetKeyCallback(engine.window, handle_keys)
 }
 
+engine_shutdown :: proc(engine: ^Engine) {}
+
 handle_keys :: proc "c" (window: glfw.WindowHandle, key: i32, scancode: i32, action: i32, mods: i32) {
 	if key == glfw.KEY_ESCAPE {
 		glfw.SetWindowShouldClose(window, true)

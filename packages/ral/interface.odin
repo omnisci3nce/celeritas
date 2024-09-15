@@ -14,8 +14,8 @@ backend_shutdown:: proc() {
 // --- Buffers
 
 // Create a GPU buffer and return a handle to it
-gpu_buffer_create :: proc(size: u64, type: BufferType, flags: BufferFlags) -> BufferHandle {
-  return _gpu_buffer_create(size, type, flags)
+gpu_buffer_create :: proc(size: uint, type: BufferType, usage: BufferUsage) -> BufferHandle {
+  return _gpu_buffer_create(size, type, usage)
 }
 
 // Release a GPU buffer and remove it from the resource pool
@@ -44,11 +44,7 @@ gpu_texture_destroy :: proc(handle: TextureHandle) {
 
 // --- Backend resources
 
-renderpass_create :: proc(desc: RenderpassDesc) -> ^Renderpass {
-  return _renderpass_create(desc)
-}
-
-pipeline_create :: proc(desc: GraphicsPipelineDesc) -> ^Pipeline {
+pipeline_create :: proc(desc: GraphicsPipelineDesc) -> PipelineHandle {
   return _pipeline_create(desc)
 }
 
@@ -69,15 +65,25 @@ encode_set_index_buf :: proc(enc: ^CmdEncoder, buffer: BufferHandle) {
   unimplemented()
 }
 
-encode_draw_tris :: proc(enc: ^CmdEncoder, count: u64) {
+encode_draw_primitives :: proc(enc: ^CmdEncoder, primitive: PrimitiveTopology, count: u64) {
   unimplemented()
+}
+
+encode_draw_tris :: proc(enc: ^CmdEncoder, count: u64) {
+  encode_draw_primitives(enc, .Triangle, count)
 }
 
 encode_draw_indexed_tris :: proc(enc: ^CmdEncoder, index_count: u64) {
   unimplemented()
 }
 
-renderpass_run_with :: proc(rpass: ^Renderpass, recording: proc(encoder: ^CmdEncoder)) -> CmdBuffer {
+renderpass_run :: proc(rpass: RenderpassInfo, recording: proc(encoder: ^CmdEncoder)) -> CmdBuffer {
+  // 1. Create the command encoder
+
+  // 2. Run the user provided function that records rendering commands
+
+  // 3. Finalise the command encoder turning it into a `CmdBuffer` ready to be submit on a Queue
+
   unimplemented()
 }
 

@@ -6,27 +6,36 @@ import "vendor:glfw"
 import "../packages/core"
 import "../packages/ral"
 
-main :: proc () {
-  engine: core.Engine
+GameData :: struct {
 
-  core.engine_init(&engine)
+}
 
-  should_exit := false
-  count := 0
+game_init :: proc() -> GameData {
 
+  cube_geo := core.cube_geo({2,2,2})
+  cube_mesh := create_mesh(cube_geo)
+
+  return GameData{}
+}
+
+game_run :: proc(engine: ^core.Engine, data: GameData) {
   for {
     if glfw.WindowShouldClose(engine.window) {
       break
     }
     glfw.PollEvents()
 
-    fmt.printfln("main loop %d", count)
-
     glfw.SwapBuffers(engine.window)
-    count += 1
-
-    if count == 1000000 {
-      should_exit = true
-    }
   }
+}
+
+main :: proc () {
+  engine: core.Engine
+  core.engine_init(&engine)
+
+  game_data := game_init()
+
+  game_run(&engine, game_data)
+
+  core.engine_shutdown(&engine)
 }

@@ -114,7 +114,7 @@ when GPU_API == .Vulkan {
 		unimplemented()
 	}
 
-	_gpu_buffer_create :: proc(size: u64, type: BufferType, flags: BufferFlags) -> BufferHandle {
+	_gpu_buffer_create :: proc(size: uint, type: BufferType, usage: BufferUsage) -> BufferHandle {
 		// return GPU_Buffer{/* TODO: actually call vulkan and return the handle */ }
 		return 1
 	}
@@ -139,11 +139,7 @@ when GPU_API == .Vulkan {
     unimplemented()
   }
 
-	_renderpass_create :: proc(desc: RenderpassDesc) -> ^Renderpass {
-		unimplemented()
-	}
-	
-	_pipeline_create :: proc(desc: GraphicsPipelineDesc) -> ^Pipeline {
+	_pipeline_create :: proc(desc: GraphicsPipelineDesc) -> PipelineHandle {
 		unimplemented()
 	}
 }
