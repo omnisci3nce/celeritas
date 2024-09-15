@@ -50,8 +50,9 @@ pipeline_create :: proc(desc: GraphicsPipelineDesc) -> PipelineHandle {
 
 // --- Render commands
 
-CmdEncoder :: struct {}
-CmdBuffer :: struct {}
+encoder_create :: proc() -> CmdEncoder {
+  return _encoder_create()
+}
 
 bind_pipeline :: proc(pipeline: PipelineHandle) {
   unimplemented()
@@ -79,20 +80,26 @@ encode_draw_indexed_tris :: proc(enc: ^CmdEncoder, index_count: u64) {
 
 renderpass_run :: proc(rpass: RenderpassInfo, recording: proc(encoder: ^CmdEncoder)) -> CmdBuffer {
   // 1. Create the command encoder
+  pipeline: ^Pipeline
+  encoder := encoder_create()
 
   // 2. Run the user provided function that records rendering commands
 
+  recording(&encoder)
+
   // 3. Finalise the command encoder turning it into a `CmdBuffer` ready to be submit on a Queue
 
+  // NOTE: we don't need to worry about resetting the Command Buffer because at the beginning of every frame we will
+  //       reset the whole Command Pool
   unimplemented()
 }
 
 // --- Frame cycle
 
-gpu_frame_start :: proc() {
+frame_start :: proc() {
   unimplemented()
 }
 
-gpu_frame_end :: proc() {
-  unimplemented()
+frame_end :: proc() {
+  _frame_end()
 }

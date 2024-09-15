@@ -3,6 +3,8 @@ package ral
 
 import "../../deps/vkb"
 import "../utils"
+import "core:fmt"
+import "core:os"
 import "vendor:glfw"
 import vk "vendor:vulkan"
 
@@ -17,6 +19,7 @@ VulkanCtx :: struct {
 	// Logical Device
 	device:            ^vkb.Device,
 	default_swapchain: ^vkb.Swapchain,
+	command_pool:      vk.CommandPool,
 
 	/* Pools */
 	pipelines:         utils.Pool(Pipeline),
@@ -41,12 +44,15 @@ VkBackendError :: union #shared_nil {
 Renderpass :: struct {}
 
 // Graphics Pipeline
-Pipeline :: struct {}
+Pipeline :: struct {
+	handle: vk.Pipeline,
+	layout: vk.PipelineLayout,
+}
 
 // TODO: ComputePipeline
 
 GPU_Buffer :: struct {
-	handle: vk.Handle,
+	handle: vk.Buffer,
 	memory: vk.DeviceMemory,
 	size:   u64,
 }
@@ -57,7 +63,17 @@ GPU_Texture :: struct {
 	size:   u64,
 }
 
+CmdEncoder :: struct {
+	cmd_buffer:      vk.CommandBuffer,
+	descriptor_pool: ^vk.DescriptorPool,
+	pipeline:        ^Pipeline,
+}
+CmdBuffer :: struct {
+	cmd_buffer: vk.CommandBuffer,
+}
+
 _backend_init :: proc(window: glfw.WindowHandle) -> (err: VkBackendError) {
+	fmt.println("Vulkan backend init")
 	instance_builder, instance_builder_err := vkb.init_instance_builder()
 	if instance_builder_err != nil do return
 	defer vkb.destroy_instance_builder(&instance_builder)
@@ -84,6 +100,7 @@ _backend_init :: proc(window: glfw.WindowHandle) -> (err: VkBackendError) {
 	vkb.selector_set_minimum_version(&selector, MINIMUM_API_VERSION)
 	vkb.selector_set_surface(&selector, ctx.surface)
 
+	fmt.println("Selecting a Physical Device...")
 	ctx.physical_device = vkb.select_physical_device(&selector) or_return
 	defer if err != nil do vkb.destroy_physical_device(ctx.physical_device)
 
@@ -91,6 +108,9 @@ _backend_init :: proc(window: glfw.WindowHandle) -> (err: VkBackendError) {
 	device_builder, device_builder_err := vkb.init_device_builder(ctx.physical_device)
 	if device_builder_err != nil do return // error
 	defer vkb.destroy_device_builder(&device_builder)
+
+	fmt.println("Creating Logical Device...")
+	ctx.device = vkb.build_device(&device_builder) or_return
 
 	// Create VkSwapchainKHR (https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkSwapchainKHR.html)
 	swapchain_builder, swapchain_builder_err := vkb.init_swapchain_builder(ctx.device)
@@ -102,6 +122,15 @@ _backend_init :: proc(window: glfw.WindowHandle) -> (err: VkBackendError) {
 
 	ctx.buffers = utils.pool_create(GPU_Buffer, 256)
 
+	// Create VkCommandPool
+	pool_create_info := vk.CommandPoolCreateInfo {
+		sType = .COMMAND_POOL_CREATE_INFO,
+		queueFamilyIndex = 1, // FIXME
+		flags = vk.CommandPoolCreateFlags{.RESET_COMMAND_BUFFER}
+	}
+
+	res := vk.CreateCommandPool(ctx.device.ptr, &pool_create_info, nil, &ctx.command_pool)
+
 	return
 }
 
@@ -110,8 +139,39 @@ _backend_shutdown :: proc() {
 }
 
 _gpu_buffer_create :: proc(size: uint, type: BufferType, usage: BufferUsage) -> BufferHandle {
-	// return GPU_Buffer{/* TODO: actually call vulkan and return the handle */ }
-	return 1
+	fmt.println("Create buffer")
+	usage_flags: vk.BufferUsageFlags
+	usage_flags += {.TRANSFER_SRC, .TRANSFER_DST, .STORAGE_BUFFER}
+
+	buffer_info := vk.BufferCreateInfo {
+		sType = .BUFFER_CREATE_INFO,
+		size = vk.DeviceSize(size),
+		usage = usage_flags,
+		sharingMode = .EXCLUSIVE,
+	}
+
+	handle, buf := utils.pool_alloc(&ctx.buffers)
+
+	res := vk.CreateBuffer(ctx.device.ptr, &buffer_info, nil, &buf.handle)
+	if res != .SUCCESS {
+		fmt.eprintln("VkCreateBuffer failed")
+	}
+	// TODO: error handling
+
+	mem_reqs: vk.MemoryRequirements
+	vk.GetBufferMemoryRequirements(ctx.device.ptr, buf.handle, &mem_reqs)
+
+	memory_info := vk.MemoryAllocateInfo {
+		sType = .MEMORY_ALLOCATE_INFO,
+		allocationSize = mem_reqs.size,
+		memoryTypeIndex = 1
+		// TODO: memoryTypeIndex
+	}
+
+	res = vk.AllocateMemory(ctx.device.ptr, &memory_info, nil, &buf.memory)
+	res = vk.BindBufferMemory(ctx.device.ptr, buf.handle, buf.memory, vk.DeviceSize(0))
+
+	return BufferHandle(handle)
 }
 
 _gpu_buffer_destroy :: proc(handle: BufferHandle) {
@@ -136,4 +196,36 @@ _gpu_texture_destroy :: proc(handle: TextureHandle) {
 
 _pipeline_create :: proc(desc: GraphicsPipelineDesc) -> PipelineHandle {
 	unimplemented()
+}
+
+_encoder_create :: proc() -> CmdEncoder {
+	command_buffer: vk.CommandBuffer
+
+	allocate_info := vk.CommandBufferAllocateInfo {
+		sType              = .COMMAND_BUFFER_ALLOCATE_INFO,
+		pNext              = nil,
+		commandPool        = ctx.command_pool,
+		level              = .PRIMARY,
+		commandBufferCount = 1,
+	}
+
+	res := vk.AllocateCommandBuffers(ctx.device.ptr, &allocate_info, &command_buffer)
+	if res != .SUCCESS {
+		fmt.eprintln("Failed to allocate command buffer from pool")
+		os.exit(1)
+	}
+
+	return CmdEncoder {
+		cmd_buffer      = command_buffer,
+		descriptor_pool = nil, // FIXME
+		pipeline        = nil, // FIXME
+	}
+}
+
+_frame_start :: proc() {
+	res := vk.ResetCommandPool(ctx.device.ptr, ctx.command_pool, {})
+}
+
+_frame_end :: proc() {
+	vk.DeviceWaitIdle(ctx.device.ptr)
 }

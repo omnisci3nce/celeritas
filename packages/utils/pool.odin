@@ -21,6 +21,8 @@ pool_create :: proc($T: typeid, capacity: u64) -> Pool(T) {
     slots = make_slice([]T, capacity)
   }
 
+  pool_free_all(&pool)
+
   return pool
 }
 
@@ -33,7 +35,7 @@ pool_free_all :: proc(pool: ^Pool($T)) {
       free_node.next = nil
     }
     // store the PoolFreeNode in the T's slot itself
-    mem.copy(pool.slots[i], &free_node, size_of(PoolFreeNode))
+    mem.copy(&pool.slots[i], &free_node, size_of(PoolFreeNode))
     pool.free_list_head = &free_node
   }
 }
@@ -43,14 +45,14 @@ pool_alloc :: proc(pool: ^Pool($T)) -> (raw_handle: u32, ptr: ^T) {
   if pool.count == pool.capacity {
     assert(pool.free_list_head == nil, "Next free node pointer should be NULL when the pool is full")
     // TODO: log.warn
-    return nil
+    return ~u32(0), nil
   }
 
   // get the next free node
   item := pool.free_list_head
 
   // calculate handle (end - start / entry size = index)
-  handle := u32((uintptr(item) - uintptr(pool.slots[0])) / sizeof(T))
+  handle := u32((uintptr(item) - uintptr(&pool.slots[0])) / size_of(T))
 
   // update free list
   pool.free_list_head = item.next
@@ -58,7 +60,7 @@ pool_alloc :: proc(pool: ^Pool($T)) -> (raw_handle: u32, ptr: ^T) {
 
   mem.zero(item, 1)
 
-  return handle, item
+  return handle, (^T)(item)
 }
 
 pool_get :: proc(pool: ^Pool($T), handle: u32) -> ^T {
