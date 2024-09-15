@@ -41,7 +41,7 @@ pool_free_all :: proc(pool: ^Pool($T)) {
 pool_alloc :: proc(pool: ^Pool($T)) -> (raw_handle: u32, ptr: ^T) {
   // check if the pool is already full
   if pool.count == pool.capacity {
-    assert(pool.free_list_head == nil)
+    assert(pool.free_list_head == nil, "Next free node pointer should be NULL when the pool is full")
     // TODO: log.warn
     return nil
   }
