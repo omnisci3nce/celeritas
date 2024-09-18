@@ -30,7 +30,9 @@ game_run :: proc(engine: ^core.Engine, data: GameData) {
     }
     glfw.PollEvents()
 
+    ral.frame_start()
     // ral.renderpass_run()
+    ral.frame_end()
 
     glfw.SwapBuffers(engine.window)
   }

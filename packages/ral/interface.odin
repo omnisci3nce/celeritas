@@ -14,8 +14,8 @@ backend_shutdown:: proc() {
 // --- Buffers
 
 // Create a GPU buffer and return a handle to it
-gpu_buffer_create :: proc(size: uint, type: BufferType, usage: BufferUsage) -> BufferHandle {
-  return _gpu_buffer_create(size, type, usage)
+gpu_buffer_create :: proc(size: uint, type: BufferType, usage: BufferUsage, data: []byte) -> BufferHandle {
+  return _gpu_buffer_create(size, type, usage, data)
 }
 
 // Release a GPU buffer and remove it from the resource pool
@@ -52,6 +52,14 @@ pipeline_create :: proc(desc: GraphicsPipelineDesc) -> PipelineHandle {
 
 encoder_create :: proc() -> CmdEncoder {
   return _encoder_create()
+}
+
+encoder_begin :: proc(enc: ^CmdEncoder) {
+  unimplemented()
+}
+
+encoder_finish :: proc(enc: ^CmdEncoder) -> CmdBuffer {
+  unimplemented()
 }
 
 bind_pipeline :: proc(pipeline: PipelineHandle) {
@@ -97,7 +105,7 @@ renderpass_run :: proc(rpass: RenderpassInfo, recording: proc(encoder: ^CmdEncod
 // --- Frame cycle
 
 frame_start :: proc() {
-  unimplemented()
+  _frame_start()
 }
 
 frame_end :: proc() {

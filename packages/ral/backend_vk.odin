@@ -41,8 +41,6 @@ VkBackendError :: union #shared_nil {
 	vkb.Error,
 }
 
-Renderpass :: struct {}
-
 // Graphics Pipeline
 Pipeline :: struct {
 	handle: vk.Pipeline,
@@ -138,7 +136,7 @@ _backend_shutdown :: proc() {
 	unimplemented()
 }
 
-_gpu_buffer_create :: proc(size: uint, type: BufferType, usage: BufferUsage) -> BufferHandle {
+_gpu_buffer_create :: proc(size: uint, type: BufferType, usage: BufferUsage, data: []byte) -> BufferHandle {
 	fmt.println("Create buffer")
 	usage_flags: vk.BufferUsageFlags
 	usage_flags += {.TRANSFER_SRC, .TRANSFER_DST, .STORAGE_BUFFER}
@@ -170,6 +168,11 @@ _gpu_buffer_create :: proc(size: uint, type: BufferType, usage: BufferUsage) -> 
 
 	res = vk.AllocateMemory(ctx.device.ptr, &memory_info, nil, &buf.memory)
 	res = vk.BindBufferMemory(ctx.device.ptr, buf.handle, buf.memory, vk.DeviceSize(0))
+
+	// If the user provided data, we can upload it now
+	if data != nil {
+		fmt.println("Upload data as part of buffer creation")
+	}
 
 	return BufferHandle(handle)
 }
