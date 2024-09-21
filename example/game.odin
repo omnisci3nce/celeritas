@@ -13,18 +13,18 @@ GameData :: struct {
 
 game_init :: proc() -> GameData {
 
-  cube_geo := core.cube_geo({2,2,2})
-  cube_mesh := core.create_mesh(cube_geo, false)
+  // cube_geo := core.cube_geo({2,2,2})
+  // cube_mesh := core.create_mesh(cube_geo, false)
 
   return GameData{
-    cube = cube_mesh
+    // cube = cube_mesh
   }
 }
 
 game_run :: proc(engine: ^core.Engine, data: GameData) {
   fmt.println("Run game")
   for {
-    fmt.println("main loop:")
+    // fmt.println("main loop:")
     if glfw.WindowShouldClose(engine.window) {
       break
     }
