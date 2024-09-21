@@ -62,7 +62,7 @@ encoder_finish :: proc(enc: ^CmdEncoder) -> CmdBuffer {
   unimplemented()
 }
 
-bind_pipeline :: proc(pipeline: PipelineHandle) {
+bind_pipeline :: proc(enc: ^CmdEncoder, pipeline: PipelineHandle) {
   unimplemented()
 }
 
@@ -88,7 +88,6 @@ encode_draw_indexed_tris :: proc(enc: ^CmdEncoder, index_count: u64) {
 
 renderpass_run :: proc(rpass: RenderpassInfo, recording: proc(encoder: ^CmdEncoder)) -> CmdBuffer {
   // 1. Create the command encoder
-  pipeline: ^Pipeline
   encoder := encoder_create()
 
   // 2. Begin "renderpass"

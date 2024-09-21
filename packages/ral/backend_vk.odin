@@ -98,8 +98,8 @@ _backend_init :: proc(window: glfw.WindowHandle) -> (err: VkBackendError) {
 	defer vkb.destroy_physical_device_selector(&selector)
 
 	dynamic_rendering_features := vk.PhysicalDeviceDynamicRenderingFeatures {
-		sType = .PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES,
-		dynamicRendering = true
+		sType            = .PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES,
+		dynamicRendering = true,
 	}
 
 	vkb.selector_set_minimum_version(&selector, MINIMUM_API_VERSION)
@@ -120,7 +120,6 @@ _backend_init :: proc(window: glfw.WindowHandle) -> (err: VkBackendError) {
 	fmt.println("Creating Logical Device...")
 	ctx.device = vkb.build_device(&device_builder) or_return
 
-	
 
 	// Create VkSwapchainKHR (https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkSwapchainKHR.html)
 	swapchain_builder, swapchain_builder_err := vkb.init_swapchain_builder(ctx.device)
@@ -148,12 +147,7 @@ _backend_shutdown :: proc() {
 	unimplemented()
 }
 
-_gpu_buffer_create :: proc(
-	size: uint,
-	type: BufferType,
-	usage: BufferUsage,
-	data: []byte,
-) -> BufferHandle {
+_gpu_buffer_create :: proc(size: uint, type: BufferType, usage: BufferUsage, data: []byte) -> BufferHandle {
 	fmt.println("Create buffer")
 	usage_flags: vk.BufferUsageFlags
 	usage_flags += {.TRANSFER_SRC, .TRANSFER_DST, .STORAGE_BUFFER}
@@ -217,8 +211,12 @@ _gpu_texture_destroy :: proc(handle: TextureHandle) {
 _pipeline_create :: proc(desc: GraphicsPipelineDesc) -> PipelineHandle {
 	fmt.printfln("Create pipeline %s", desc.label)
 	create_info := vk.PipelineRenderingCreateInfo {
-
+		sType                = .PIPELINE_RENDERING_CREATE_INFO,
+		colorAttachmentCount = 1,
+		// pColorAttachmentFormats = 
 	}
+
+	unimplemented()
 }
 
 _encoder_create :: proc() -> CmdEncoder {
@@ -243,6 +241,14 @@ _encoder_create :: proc() -> CmdEncoder {
 		descriptor_pool = nil, // FIXME
 		pipeline        = nil, // FIXME
 	}
+}
+
+_renderpass_begin :: proc(enc: ^CmdEncoder, rpass: RenderpassInfo) {
+	unimplemented()
+}
+
+_renderpass_finish :: proc(enc: ^CmdEncoder) {
+	unimplemented()
 }
 
 _frame_start :: proc() {

@@ -5,14 +5,11 @@ import "core:c"
 import "core:fmt"
 import "vendor:glfw"
 
-WINDOW_WIDTH :: 1000
-WINDOW_HEIGHT :: 1000
-
 Engine :: struct {
 	window: glfw.WindowHandle,
 }
 
-engine_init :: proc(engine: ^Engine) {
+engine_init :: proc(engine: ^Engine, window_width: int, window_height: int) {
 	fmt.println("Engine init")
 
 	if !glfw.Init() {
@@ -26,13 +23,7 @@ engine_init :: proc(engine: ^Engine) {
 	}
 	fmt.println("Created window")
 
-	engine.window = glfw.CreateWindow(
-		WINDOW_WIDTH,
-		WINDOW_HEIGHT,
-		"Celeritas Engine Test",
-		nil,
-		nil,
-	)
+	engine.window = glfw.CreateWindow(i32(window_width), i32(window_height), "Celeritas Engine Test", nil, nil)
 	if engine.window == nil {
 		fmt.println("Unable to create window")
 		return
