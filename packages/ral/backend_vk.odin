@@ -16,15 +16,17 @@ VulkanCtx :: struct {
 	instance:          ^vkb.Instance,
 	surface:           vk.SurfaceKHR,
 	physical_device:   ^vkb.Physical_Device,
-	// Logical Device
-	device:            ^vkb.Device,
+	device:            ^vkb.Device, // Logical Device
 	default_swapchain: ^vkb.Swapchain,
 	command_pool:      vk.CommandPool,
-
+	/* Queues */
+	graphics_queue:    vk.Queue,
+	present_queue:     vk.Queue,
 	/* Pools */
 	pipelines:         utils.Pool(Pipeline),
 	buffers:           utils.Pool(GPU_Buffer),
 	textures:          utils.Pool(GPU_Texture),
+	/* Sync objects */
 }
 
 ctx: VulkanCtx
@@ -80,7 +82,7 @@ _backend_init :: proc(window: glfw.WindowHandle) -> (err: VkBackendError) {
 	vkb.instance_request_validation_layers(&instance_builder)
 	vkb.instance_use_default_debug_messenger(&instance_builder)
 
-	// TODO: other extensions
+	vkb.instance_enable_extension(&instance_builder, "VK_KHR_get_physical_device_properties2")
 
 	// Create VkInstance (https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkInstance.html)
 	ctx.instance = vkb.build_instance(&instance_builder) or_return
@@ -95,8 +97,15 @@ _backend_init :: proc(window: glfw.WindowHandle) -> (err: VkBackendError) {
 	selector := vkb.init_physical_device_selector(ctx.instance) or_return
 	defer vkb.destroy_physical_device_selector(&selector)
 
+	dynamic_rendering_features := vk.PhysicalDeviceDynamicRenderingFeatures {
+		sType = .PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES,
+		dynamicRendering = true
+	}
+
 	vkb.selector_set_minimum_version(&selector, MINIMUM_API_VERSION)
 	vkb.selector_set_surface(&selector, ctx.surface)
+	// vkb.selector_add_required_extension(&selector, "VK_KHR_dynamic_rendering")
+	vkb.selector_add_required_extension_features(&selector, dynamic_rendering_features)
 
 	fmt.println("Selecting a Physical Device...")
 	ctx.physical_device = vkb.select_physical_device(&selector) or_return
@@ -104,11 +113,14 @@ _backend_init :: proc(window: glfw.WindowHandle) -> (err: VkBackendError) {
 
 	// Create VkDevice (https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkDevice.html)
 	device_builder, device_builder_err := vkb.init_device_builder(ctx.physical_device)
+	// vkb.device_builder_add_p_next(&device_builder, &dynamic_rendering_features)
 	if device_builder_err != nil do return // error
 	defer vkb.destroy_device_builder(&device_builder)
 
 	fmt.println("Creating Logical Device...")
 	ctx.device = vkb.build_device(&device_builder) or_return
+
+	
 
 	// Create VkSwapchainKHR (https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkSwapchainKHR.html)
 	swapchain_builder, swapchain_builder_err := vkb.init_swapchain_builder(ctx.device)
@@ -122,9 +134,9 @@ _backend_init :: proc(window: glfw.WindowHandle) -> (err: VkBackendError) {
 
 	// Create VkCommandPool
 	pool_create_info := vk.CommandPoolCreateInfo {
-		sType = .COMMAND_POOL_CREATE_INFO,
+		sType            = .COMMAND_POOL_CREATE_INFO,
 		queueFamilyIndex = 1, // FIXME
-		flags = vk.CommandPoolCreateFlags{.RESET_COMMAND_BUFFER}
+		flags            = vk.CommandPoolCreateFlags{.RESET_COMMAND_BUFFER},
 	}
 
 	res := vk.CreateCommandPool(ctx.device.ptr, &pool_create_info, nil, &ctx.command_pool)
@@ -136,15 +148,20 @@ _backend_shutdown :: proc() {
 	unimplemented()
 }
 
-_gpu_buffer_create :: proc(size: uint, type: BufferType, usage: BufferUsage, data: []byte) -> BufferHandle {
+_gpu_buffer_create :: proc(
+	size: uint,
+	type: BufferType,
+	usage: BufferUsage,
+	data: []byte,
+) -> BufferHandle {
 	fmt.println("Create buffer")
 	usage_flags: vk.BufferUsageFlags
 	usage_flags += {.TRANSFER_SRC, .TRANSFER_DST, .STORAGE_BUFFER}
 
 	buffer_info := vk.BufferCreateInfo {
-		sType = .BUFFER_CREATE_INFO,
-		size = vk.DeviceSize(size),
-		usage = usage_flags,
+		sType       = .BUFFER_CREATE_INFO,
+		size        = vk.DeviceSize(size),
+		usage       = usage_flags,
 		sharingMode = .EXCLUSIVE,
 	}
 
@@ -160,9 +177,9 @@ _gpu_buffer_create :: proc(size: uint, type: BufferType, usage: BufferUsage, dat
 	vk.GetBufferMemoryRequirements(ctx.device.ptr, buf.handle, &mem_reqs)
 
 	memory_info := vk.MemoryAllocateInfo {
-		sType = .MEMORY_ALLOCATE_INFO,
-		allocationSize = mem_reqs.size,
-		memoryTypeIndex = 1
+		sType           = .MEMORY_ALLOCATE_INFO,
+		allocationSize  = mem_reqs.size,
+		memoryTypeIndex = 1,
 		// TODO: memoryTypeIndex
 	}
 
@@ -198,7 +215,10 @@ _gpu_texture_destroy :: proc(handle: TextureHandle) {
 }
 
 _pipeline_create :: proc(desc: GraphicsPipelineDesc) -> PipelineHandle {
-	unimplemented()
+	fmt.printfln("Create pipeline %s", desc.label)
+	create_info := vk.PipelineRenderingCreateInfo {
+
+	}
 }
 
 _encoder_create :: proc() -> CmdEncoder {
