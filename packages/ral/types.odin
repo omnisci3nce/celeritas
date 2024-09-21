@@ -11,6 +11,8 @@ TextureHandle :: distinct u64
 PipelineHandle :: distinct u64
 
 RenderpassInfo :: struct {
+  render_area_width: uint,
+  render_area_height: uint,
   // TODO: color targets
   // TODO: maybe depth target
 }

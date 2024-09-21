@@ -91,15 +91,26 @@ renderpass_run :: proc(rpass: RenderpassInfo, recording: proc(encoder: ^CmdEncod
   pipeline: ^Pipeline
   encoder := encoder_create()
 
-  // 2. Run the user provided function that records rendering commands
+  // 2. Begin "renderpass"
+  renderpass_begin(&encoder, rpass)
 
+  // 3. Run the user provided function that records rendering commands
   recording(&encoder)
 
-  // 3. Finalise the command encoder turning it into a `CmdBuffer` ready to be submit on a Queue
+  // 4. Finalise the command encoder turning it into a `CmdBuffer` ready to be submit on a Queue
+  renderpass_finish(&encoder)
 
   // NOTE: we don't need to worry about resetting the Command Buffer because at the beginning of every frame we will
   //       reset the whole Command Pool
   unimplemented()
+}
+
+renderpass_begin :: proc(enc: ^CmdEncoder, rpass: RenderpassInfo) {
+  _renderpass_begin(enc, rpass)
+}
+
+renderpass_finish :: proc(enc: ^CmdEncoder) {
+  _renderpass_finish(enc)
 }
 
 // --- Frame cycle

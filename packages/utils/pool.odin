@@ -6,6 +6,7 @@ PoolFreeNode :: struct {
   next: ^PoolFreeNode
 }
 
+// Pool allocator for type [T] that provides handles to a resource in the pool.
 Pool :: struct($T: typeid) {
   capacity: u64,
   count: u64,
@@ -67,3 +68,5 @@ pool_get :: proc(pool: ^Pool($T), handle: u32) -> ^T {
   assert(handle < pool.capacity)
   return pool.slots[handle]
 }
+
+// TODO: specify some tests

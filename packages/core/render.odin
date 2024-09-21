@@ -36,10 +36,10 @@ Mesh :: struct {
 create_mesh :: proc(geo: Geometry, free_on_upload: bool) -> Mesh {
     // create vertex buffer
     size := uint(len(geo.vertices.inner) * size_of(Static3DVertex))
-    vbuf := ral.gpu_buffer_create(size, .Vertex, .DeviceLocal, )
+    vbuf := ral.gpu_buffer_create(size, .Vertex, .DeviceLocal, nil)
 
     // create index buffer
-    ibuf := ral.gpu_buffer_create(uint(len(geo.indices) * size_of(u32)), .Index, .DeviceLocal)
+    ibuf := ral.gpu_buffer_create(uint(len(geo.indices) * size_of(u32)), .Index, .DeviceLocal, nil)
 
     // (optional) free cpu-side vertex data
 
