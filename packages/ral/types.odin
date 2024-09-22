@@ -17,13 +17,21 @@ RenderpassInfo :: struct {
   // TODO: maybe depth target
 }
 
+// Describes a shader on-disk and how to load it
+ShaderDesc :: struct {
+  label: string,
+  path: string,
+  is_spirv: bool,
+  is_combined_vert_frag: bool
+}
+
 // Data required to create a [Pipeline] used for rendering
 GraphicsPipelineDesc :: struct {
   label: string,
   vertex_desc: VertexDescription,
-  // TODO: shaders
+  vs: ShaderDesc,
+  fs: ShaderDesc,
   shader_layouts: []ShaderDataLayout
-
 }
 
 BufferType :: enum {

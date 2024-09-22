@@ -120,16 +120,24 @@ _backend_init :: proc(window: glfw.WindowHandle) -> (err: VkBackendError) {
 	fmt.println("Creating Logical Device...")
 	ctx.device = vkb.build_device(&device_builder) or_return
 
-
+	// TODO: Move this to a separate swapchain_create function!
 	// Create VkSwapchainKHR (https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkSwapchainKHR.html)
 	swapchain_builder, swapchain_builder_err := vkb.init_swapchain_builder(ctx.device)
 	if swapchain_builder_err != nil do return // error
 	defer vkb.destroy_swapchain_builder(&swapchain_builder)
 
-	ctx.default_swapchain = vkb.build_swapchain(&swapchain_builder) or_return // default is 888 SRGB colorspace, Mailbox present mode.
+	vkb.swapchain_builder_use_default_format_selection(&swapchain_builder) // default is 8888 SRG Nonlinear
+	vkb.swapchain_builder_set_present_mode(&swapchain_builder, .FIFO) // limit FPS to speed of monitor
+
+	ctx.default_swapchain = vkb.build_swapchain(&swapchain_builder) or_return
 	if err != nil do return // error
 
-	ctx.buffers = utils.pool_create(GPU_Buffer, 256)
+	ctx.graphics_queue, err = vkb.device_get_queue(ctx.device, .Graphics)
+	ctx.present_queue, err = vkb.device_get_queue(ctx.device, .Present)
+
+	ctx.pipelines = utils.pool_create(Pipeline, 128)
+	ctx.buffers = utils.pool_create(GPU_Buffer, 1024)
+	ctx.textures = utils.pool_create(GPU_Texture, 1024)
 
 	// Create VkCommandPool
 	pool_create_info := vk.CommandPoolCreateInfo {
@@ -208,12 +216,88 @@ _gpu_texture_destroy :: proc(handle: TextureHandle) {
 	unimplemented()
 }
 
+// Convert a RAL vertex attribute into a vulkan type
+vk_format_from_vertex_attr :: proc(kind: VertexAttribKind) -> vk.Format {
+	switch kind {
+	case .F32:
+		return .R32_SFLOAT
+	case .U32:
+		return .R32_UINT
+	case .I32:
+		return .R32_SINT
+	case .F32x2:
+		return .R32G32_SFLOAT
+	case .U32x2:
+		return .R32G32_UINT
+	case .I32x2:
+		return .R32G32_SINT
+	case .F32x3:
+		return .R32G32B32_SFLOAT
+	case .U32x3:
+		return .R32G32B32_UINT
+	case .I32x3:
+		return .R32G32B32_SINT
+	case .F32x4:
+		return .R32G32B32A32_SFLOAT
+	case .U32x4:
+		return .R32G32B32A32_UINT
+	case .I32x4:
+		return .R32G32B32A32_SINT
+	case:
+		return .R32G32B32A32_SFLOAT
+	}
+}
+
 _pipeline_create :: proc(desc: GraphicsPipelineDesc) -> PipelineHandle {
 	fmt.printfln("Create pipeline %s", desc.label)
-	create_info := vk.PipelineRenderingCreateInfo {
-		sType                = .PIPELINE_RENDERING_CREATE_INFO,
-		colorAttachmentCount = 1,
-		// pColorAttachmentFormats = 
+
+	// vertex attributes
+	vertex_attributes := make([]vk.VertexInputAttributeDescription, len(desc.vertex_desc.attributes))
+	// FIXME: defer delete(vertex_attributes)
+
+	offset := 0
+	for attr, attr_idx in desc.vertex_desc.attributes {
+		vertex_attributes[attr_idx].binding = 0
+		vertex_attributes[attr_idx].location = u32(attr_idx)
+		vertex_attributes[attr_idx].format = vk_format_from_vertex_attr(attr.kind)
+		vertex_attributes[attr_idx].offset = u32(offset)
+
+		// Move offset forwards
+		offset += vertex_attrib_size(attr.kind)
+	}
+
+	// vertex description
+	vertex_binding_desc := []vk.VertexInputBindingDescription{{binding = 0, inputRate = .VERTEX}}
+
+	vertex_input_info := vk.PipelineVertexInputStateCreateInfo {
+		sType                         = .PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+		vertexBindingDescriptionCount = 1,
+		pVertexBindingDescriptions    = raw_data(vertex_binding_desc),
+		vertexAttributeDescriptionCount = u32(len(vertex_attributes)),
+		pVertexAttributeDescriptions = raw_data(vertex_attributes)
+	}
+
+	// TODO: shaders
+
+	vertex_stage_info := vk.PipelineShaderStageCreateInfo {
+		sType = .PIPELINE_SHADER_STAGE_CREATE_INFO,
+		stage = {.VERTEX},
+		// TODO module (shader module)
+		pName = "main",
+	}
+
+	formats := []vk.Format{.R8G8B8A8_SRGB}
+	// https://lesleylai.info/en/vk-khr-dynamic-rendering/
+	rendering_create_info := vk.PipelineRenderingCreateInfo {
+		sType                   = .PIPELINE_RENDERING_CREATE_INFO,
+		colorAttachmentCount    = 1,
+		pColorAttachmentFormats = raw_data(formats),
+	}
+
+	create_info := vk.GraphicsPipelineCreateInfo {
+		sType      = .GRAPHICS_PIPELINE_CREATE_INFO,
+		stageCount = 2,
+		renderPass = vk.RenderPass{}, // Empty since we're using dynamic rendering (it wont let us use nullptr/nil?)
 	}
 
 	unimplemented()
@@ -244,11 +328,11 @@ _encoder_create :: proc() -> CmdEncoder {
 }
 
 _renderpass_begin :: proc(enc: ^CmdEncoder, rpass: RenderpassInfo) {
-	unimplemented()
+	// unimplemented()
 }
 
 _renderpass_finish :: proc(enc: ^CmdEncoder) {
-	unimplemented()
+	// unimplemented()
 }
 
 _frame_start :: proc() {

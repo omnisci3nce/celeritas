@@ -63,7 +63,7 @@ encoder_finish :: proc(enc: ^CmdEncoder) -> CmdBuffer {
 }
 
 bind_pipeline :: proc(enc: ^CmdEncoder, pipeline: PipelineHandle) {
-  unimplemented()
+  // unimplemented()
 }
 
 encode_set_vertex_buf :: proc(enc: ^CmdEncoder, buffer: BufferHandle) {
@@ -101,7 +101,8 @@ renderpass_run :: proc(rpass: RenderpassInfo, recording: proc(encoder: ^CmdEncod
 
   // NOTE: we don't need to worry about resetting the Command Buffer because at the beginning of every frame we will
   //       reset the whole Command Pool
-  unimplemented()
+  // unimplemented()
+  return CmdBuffer{}
 }
 
 renderpass_begin :: proc(enc: ^CmdEncoder, rpass: RenderpassInfo) {

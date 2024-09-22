@@ -15,7 +15,8 @@ GameData :: struct {
 }
 
 RenderData :: struct {
-  tri_pipeline: ral.PipelineHandle
+  tri_pipeline: ral.PipelineHandle,
+  vbuf: ral.BufferHandle,
 }
 render_data: RenderData
 
@@ -57,8 +58,14 @@ game_run :: proc(engine: ^core.Engine, game: GameData) {
 }
 
 render_init :: proc(engine: ^core.Engine) {
+  // Create vertex buffer
 
-}
+  // Create graphics pipeline
+  ral.pipeline_create(ral.GraphicsPipelineDesc {
+    label = "Draw Triangle Pipeline",
+    
+  })
+} 
 
 
 main :: proc () {
