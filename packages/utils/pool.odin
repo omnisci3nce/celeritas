@@ -1,3 +1,9 @@
+/* Generic Pool allocator that returns handles */
+
+/* TODOS:
+    - make the handles generational handles
+*/
+
 package utils
 
 import "core:mem"

@@ -1,0 +1,1 @@
+/* Shadow rendering implementation for celeritas's reference renderer */

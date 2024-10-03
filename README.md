@@ -14,6 +14,12 @@
 
 *These can be movied into a CONTRIBUTING.md or something later on*
 
+## Project Structure
+
+`core` - basic engine lifecycle and facilities such as logging  
+`ral` - thin abstraction over graphics apis  
+`render` - reference renderer that is built on top of `ral`  
+
 #### RAL
 
 - **`Desc` suffix** refers to a description of a resource that you pass to a function that then creates the resource
