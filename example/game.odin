@@ -59,18 +59,48 @@ game_run :: proc(engine: ^core.Engine, game: GameData) {
 
 render_init :: proc(engine: ^core.Engine) {
   // Create vertex buffer
+  positions :=  [9]f32{
+      0.0, -0.5, 0.0,
+      0.5, 0.5, 0.0,
+      -0.5, 0.5, 0.0,
+  }
+
+  render_data.vbuf = ral.gpu_buffer_create(size_of(positions), .Vertex, .Shared, &positions)
 
   // Create graphics pipeline
-  ral.pipeline_create(ral.GraphicsPipelineDesc {
+  render_data.tri_pipeline = ral.pipeline_create(ral.GraphicsPipelineDesc {
     label = "Draw Triangle Pipeline",
-    
+    vertex_desc = ral.VertexDescription {
+        label = "Basic vert",
+        attributes = {
+           ral.VertexAttrib {
+               label = "Position",
+               kind = .F32x3
+           }
+        },
+    },
+    vs = {
+        label = "Triangle Vertex Shader",
+        path = "assets/tri.vert",
+        is_spirv = false,
+        is_combined_vert_frag = false,
+    },
+    fs = {
+        label = "Triangle Fragment Shader",
+        path = "assets/tri.frag",
+        is_spirv = false,
+        is_combined_vert_frag = false,
+    },
+    shader_layouts = {},
   })
-} 
+}
 
 
 main :: proc () {
   engine: core.Engine
   core.engine_init(&engine, WINDOW_WIDTH, WINDOW_HEIGHT)
+
+  render_init(&engine)
 
   // Initialise everything we need at the start. Shaders, pipelines, buffers, etc
   game_data := game_init()

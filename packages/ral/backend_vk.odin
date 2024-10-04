@@ -4,6 +4,7 @@ package ral
 import "../../deps/vkb"
 import "../utils"
 import "core:fmt"
+import "core:mem"
 import "core:os"
 import "vendor:glfw"
 import vk "vendor:vulkan"
@@ -155,7 +156,23 @@ _backend_shutdown :: proc() {
 	unimplemented()
 }
 
-_gpu_buffer_create :: proc(size: uint, type: BufferType, usage: BufferUsage, data: []byte) -> BufferHandle {
+find_memory_index :: proc(type_filter: u32, desired_flags: vk.MemoryPropertyFlags) -> int {
+	memory_properties: vk.PhysicalDeviceMemoryProperties
+	vk.GetPhysicalDeviceMemoryProperties(ctx.physical_device.ptr, &memory_properties)
+
+	for i in 0 ..= memory_properties.memoryTypeCount {
+		anded := memory_properties.memoryTypes[i].propertyFlags & desired_flags
+		equivalent := anded == desired_flags
+		if ((type_filter & (1 << i) != 0) && equivalent) {
+			return int(i)
+		}
+	}
+
+	fmt.eprintln("Unable to find suitable memory type")
+	return -1
+}
+
+_gpu_buffer_create :: proc(size: uint, type: BufferType, usage: BufferUsage, data: rawptr) -> BufferHandle {
 	fmt.println("Create buffer")
 	usage_flags: vk.BufferUsageFlags
 	usage_flags += {.TRANSFER_SRC, .TRANSFER_DST, .STORAGE_BUFFER}
@@ -181,7 +198,9 @@ _gpu_buffer_create :: proc(size: uint, type: BufferType, usage: BufferUsage, dat
 	memory_info := vk.MemoryAllocateInfo {
 		sType           = .MEMORY_ALLOCATE_INFO,
 		allocationSize  = mem_reqs.size,
-		memoryTypeIndex = 1,
+		memoryTypeIndex = u32(
+			find_memory_index(mem_reqs.memoryTypeBits, {.DEVICE_LOCAL, .HOST_VISIBLE, .HOST_COHERENT}), // just grab all the flags we might need. the perf difference for our needs will be inconsequential
+		),
 		// TODO: memoryTypeIndex
 	}
 
@@ -191,6 +210,13 @@ _gpu_buffer_create :: proc(size: uint, type: BufferType, usage: BufferUsage, dat
 	// If the user provided data, we can upload it now
 	if data != nil {
 		fmt.println("Upload data as part of buffer creation")
+
+		data_ptr: rawptr
+
+		vk.MapMemory(ctx.device.ptr, buf.memory, vk.DeviceSize(0), vk.DeviceSize(size), vk.MemoryMapFlags{}, &data_ptr)
+		fmt.printfln("Uploading %d bytes", size)
+		mem.copy(data_ptr, data, int(size))
+		// vk.UnmapMemory(ctx.device.ptr, buf.memory)
 	}
 
 	return BufferHandle(handle)
@@ -248,6 +274,20 @@ vk_format_from_vertex_attr :: proc(kind: VertexAttribKind) -> vk.Format {
 	}
 }
 
+// Takes SPIR-V and creates a Vulkan ShaderModule for it
+create_shader_module :: proc(spv: []u8) -> vk.ShaderModule {
+	create_info := vk.ShaderModuleCreateInfo {
+		sType    = .SHADER_MODULE_CREATE_INFO,
+		codeSize = len(spv),
+		pCode    = cast(^u32)raw_data(spv),
+	}
+
+	shader_mod: vk.ShaderModule
+	vk.CreateShaderModule(ctx.device.ptr, &create_info, nil, &shader_mod)
+	// TODO: error handling
+	return shader_mod
+}
+
 _pipeline_create :: proc(desc: GraphicsPipelineDesc) -> PipelineHandle {
 	fmt.printfln("Create pipeline %s", desc.label)
 
@@ -270,20 +310,31 @@ _pipeline_create :: proc(desc: GraphicsPipelineDesc) -> PipelineHandle {
 	vertex_binding_desc := []vk.VertexInputBindingDescription{{binding = 0, inputRate = .VERTEX}}
 
 	vertex_input_info := vk.PipelineVertexInputStateCreateInfo {
-		sType                         = .PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
-		vertexBindingDescriptionCount = 1,
-		pVertexBindingDescriptions    = raw_data(vertex_binding_desc),
+		sType                           = .PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+		vertexBindingDescriptionCount   = 1,
+		pVertexBindingDescriptions      = raw_data(vertex_binding_desc),
 		vertexAttributeDescriptionCount = u32(len(vertex_attributes)),
-		pVertexAttributeDescriptions = raw_data(vertex_attributes)
+		pVertexAttributeDescriptions    = raw_data(vertex_attributes),
 	}
 
 	// TODO: shaders
+	vertex_src, vert_success := os.read_entire_file(desc.vs.path)
+	fragment_src, frag_success := os.read_entire_file(desc.fs.path)
+	vertex_module := create_shader_module(vertex_src)
+	fragment_module := create_shader_module(fragment_src)
 
-	vertex_stage_info := vk.PipelineShaderStageCreateInfo {
-		sType = .PIPELINE_SHADER_STAGE_CREATE_INFO,
-		stage = {.VERTEX},
-		// TODO module (shader module)
-		pName = "main",
+	shader_stages: [2]vk.PipelineShaderStageCreateInfo
+	shader_stages[0] = vk.PipelineShaderStageCreateInfo {
+		sType  = .PIPELINE_SHADER_STAGE_CREATE_INFO,
+		stage  = {.VERTEX},
+		module = vertex_module,
+		pName  = "main",
+	}
+	shader_stages[1] = vk.PipelineShaderStageCreateInfo {
+		sType  = .PIPELINE_SHADER_STAGE_CREATE_INFO,
+		stage  = {.FRAGMENT},
+		module = fragment_module,
+		pName  = "main",
 	}
 
 	formats := []vk.Format{.R8G8B8A8_SRGB}
