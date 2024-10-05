@@ -8,5 +8,7 @@ SPIRV_OBJECTS = $(addsuffix .spv,$(GLSL_SOURCES))
 %.vert.spv: %.vert
 	$(GLSL_COMPILER) -V $< -o $@
 
+%.frag.spv: %.frag
+	$(GLSL_COMPILER) -V $< -o $@
 
 shaders: $(SPIRV_OBJECTS)

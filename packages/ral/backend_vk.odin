@@ -28,6 +28,9 @@ VulkanCtx :: struct {
 	buffers:           utils.Pool(GPU_Buffer),
 	textures:          utils.Pool(GPU_Texture),
 	/* Sync objects */
+
+	// TEMP
+	renderpass:        vk.RenderPass,
 }
 
 ctx: VulkanCtx
@@ -75,10 +78,17 @@ CmdBuffer :: struct {
 
 _backend_init :: proc(window: glfw.WindowHandle) -> (err: VkBackendError) {
 	fmt.println("Vulkan backend init")
+
+	// Do I actually need this? I got it from someone else
+	get_proc_address :: proc(p: rawptr, name: cstring) {
+		(cast(^rawptr)p)^ = glfw.GetInstanceProcAddress((^vk.Instance)(&ctx.instance.ptr)^, name)
+	}
+
 	instance_builder, instance_builder_err := vkb.init_instance_builder()
 	if instance_builder_err != nil do return
 	defer vkb.destroy_instance_builder(&instance_builder)
 
+	vkb.instance_set_minimum_version(&instance_builder, vk.API_VERSION_1_3)
 	// Enable `VK_LAYER_KHRONOS_validation` layer
 	vkb.instance_request_validation_layers(&instance_builder)
 	vkb.instance_use_default_debug_messenger(&instance_builder)
@@ -89,6 +99,8 @@ _backend_init :: proc(window: glfw.WindowHandle) -> (err: VkBackendError) {
 	ctx.instance = vkb.build_instance(&instance_builder) or_return
 	defer if err != nil do vkb.destroy_instance(ctx.instance)
 
+	vk.load_proc_addresses(get_proc_address)
+
 	glfw_err := glfw.CreateWindowSurface(ctx.instance.ptr, window, nil, &ctx.surface)
 	if glfw_err != .SUCCESS {
 		return .GLFWError
@@ -98,7 +110,7 @@ _backend_init :: proc(window: glfw.WindowHandle) -> (err: VkBackendError) {
 	selector := vkb.init_physical_device_selector(ctx.instance) or_return
 	defer vkb.destroy_physical_device_selector(&selector)
 
-	dynamic_rendering_features := vk.PhysicalDeviceDynamicRenderingFeatures {
+	dynamic_rendering_features := vk.PhysicalDeviceDynamicRenderingFeaturesKHR {
 		sType            = .PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES,
 		dynamicRendering = true,
 	}
@@ -114,7 +126,6 @@ _backend_init :: proc(window: glfw.WindowHandle) -> (err: VkBackendError) {
 
 	// Create VkDevice (https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkDevice.html)
 	device_builder, device_builder_err := vkb.init_device_builder(ctx.physical_device)
-	// vkb.device_builder_add_p_next(&device_builder, &dynamic_rendering_features)
 	if device_builder_err != nil do return // error
 	defer vkb.destroy_device_builder(&device_builder)
 
@@ -276,6 +287,7 @@ vk_format_from_vertex_attr :: proc(kind: VertexAttribKind) -> vk.Format {
 
 // Takes SPIR-V and creates a Vulkan ShaderModule for it
 create_shader_module :: proc(spv: []u8) -> vk.ShaderModule {
+	fmt.printfln("Shader module size %d bytes", len(spv))
 	create_info := vk.ShaderModuleCreateInfo {
 		sType    = .SHADER_MODULE_CREATE_INFO,
 		codeSize = len(spv),
@@ -288,10 +300,53 @@ create_shader_module :: proc(spv: []u8) -> vk.ShaderModule {
 	return shader_mod
 }
 
+create_render_pass :: proc() {
+	color_attachment: vk.AttachmentDescription
+	color_attachment.format = .R8G8B8A8_SRGB
+	color_attachment.samples = {._1}
+	color_attachment.loadOp = .CLEAR
+	color_attachment.storeOp = .STORE
+	color_attachment.stencilLoadOp = .DONT_CARE
+	color_attachment.stencilStoreOp = .DONT_CARE
+	color_attachment.initialLayout = .UNDEFINED
+	color_attachment.finalLayout = .PRESENT_SRC_KHR
+
+	color_attachment_ref: vk.AttachmentReference
+	color_attachment_ref.attachment = 0
+	color_attachment_ref.layout = .COLOR_ATTACHMENT_OPTIMAL
+
+	subpass: vk.SubpassDescription
+	subpass.pipelineBindPoint = .GRAPHICS
+	subpass.colorAttachmentCount = 1
+	subpass.pColorAttachments = &color_attachment_ref
+
+	dependency: vk.SubpassDependency
+	dependency.srcSubpass = vk.SUBPASS_EXTERNAL
+	dependency.dstSubpass = 0
+	dependency.srcStageMask = {.COLOR_ATTACHMENT_OUTPUT}
+	dependency.srcAccessMask = {}
+	dependency.dstStageMask = {.COLOR_ATTACHMENT_OUTPUT}
+	dependency.dstAccessMask = {.COLOR_ATTACHMENT_WRITE}
+
+	render_pass_info: vk.RenderPassCreateInfo
+	render_pass_info.sType = .RENDER_PASS_CREATE_INFO
+	render_pass_info.attachmentCount = 1
+	render_pass_info.pAttachments = &color_attachment
+	render_pass_info.subpassCount = 1
+	render_pass_info.pSubpasses = &subpass
+	render_pass_info.dependencyCount = 1
+	render_pass_info.pDependencies = &dependency
+
+	if res := vk.CreateRenderPass(ctx.device.ptr, &render_pass_info, nil, &ctx.renderpass); res != .SUCCESS {
+		fmt.eprintf("Error: Failed to create render pass!\n")
+		os.exit(1)
+	}
+}
+
 _pipeline_create :: proc(desc: GraphicsPipelineDesc) -> PipelineHandle {
 	fmt.printfln("Create pipeline %s", desc.label)
 
-	// vertex attributes
+	// Vertex attributes
 	vertex_attributes := make([]vk.VertexInputAttributeDescription, len(desc.vertex_desc.attributes))
 	// FIXME: defer delete(vertex_attributes)
 
@@ -306,7 +361,7 @@ _pipeline_create :: proc(desc: GraphicsPipelineDesc) -> PipelineHandle {
 		offset += vertex_attrib_size(attr.kind)
 	}
 
-	// vertex description
+	// Vertex input
 	vertex_binding_desc := []vk.VertexInputBindingDescription{{binding = 0, inputRate = .VERTEX}}
 
 	vertex_input_info := vk.PipelineVertexInputStateCreateInfo {
@@ -317,11 +372,89 @@ _pipeline_create :: proc(desc: GraphicsPipelineDesc) -> PipelineHandle {
 		pVertexAttributeDescriptions    = raw_data(vertex_attributes),
 	}
 
-	// TODO: shaders
+	input_assembly := vk.PipelineInputAssemblyStateCreateInfo {
+		sType                  = .PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
+		topology               = .TRIANGLE_LIST, // TODO: get this from our PrimitiveTopology enum
+		primitiveRestartEnable = false,
+	}
+
+	// Dynamic State
+
+	dynamic_states: [4]vk.DynamicState = {
+		vk.DynamicState.VIEWPORT,
+		vk.DynamicState.SCISSOR,
+		vk.DynamicState.BLEND_CONSTANTS,
+		vk.DynamicState.STENCIL_REFERENCE,
+	}
+
+	dynamic_state_info := vk.PipelineDynamicStateCreateInfo {
+		sType             = .PIPELINE_DYNAMIC_STATE_CREATE_INFO,
+		dynamicStateCount = 4,
+		pDynamicStates    = raw_data(&dynamic_states),
+	}
+
+	// Viewport
+	viewport_state := vk.PipelineViewportStateCreateInfo {
+		sType         = .PIPELINE_VIEWPORT_STATE_CREATE_INFO,
+		viewportCount = 1,
+		scissorCount  = 1,
+		// NOTE: We don't need to specify a viewport size here as we will be enabling them as dynamic state
+	}
+
+	multisample_info := vk.PipelineMultisampleStateCreateInfo {
+		sType                = .PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
+		minSampleShading     = 1.0,
+		rasterizationSamples = {._1},
+	}
+
+	color_blends: [1]vk.PipelineColorBlendAttachmentState
+	color_blends[0] = vk.PipelineColorBlendAttachmentState {
+		srcColorBlendFactor = .SRC_ALPHA,
+		dstColorBlendFactor = .ONE_MINUS_DST_ALPHA,
+		colorBlendOp        = .ADD,
+		srcAlphaBlendFactor = .SRC_ALPHA,
+		dstAlphaBlendFactor = .ONE_MINUS_SRC_ALPHA,
+		alphaBlendOp        = .ADD,
+		colorWriteMask      = {.R, .G, .B, .A},
+	}
+	blend_info := vk.PipelineColorBlendStateCreateInfo {
+		sType           = .PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
+		logicOpEnable   = false,
+		logicOp         = .COPY,
+		attachmentCount = 1,
+		pAttachments    = raw_data(&color_blends),
+	}
+
+	// Rasteriser
+	rasterizer_info := vk.PipelineRasterizationStateCreateInfo {
+		sType                   = .PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
+		depthClampEnable        = false,
+		depthBiasEnable         = false,
+		rasterizerDiscardEnable = false,
+		polygonMode             = .FILL,
+		lineWidth               = 1.0,
+		cullMode                = {.BACK},
+		frontFace               = .COUNTER_CLOCKWISE,
+	}
+
+	// Load SPIR-V bytecode shaders
 	vertex_src, vert_success := os.read_entire_file(desc.vs.path)
 	fragment_src, frag_success := os.read_entire_file(desc.fs.path)
+	if !vert_success {
+		fmt.eprintfln("Error reading vertex shader @ %s", desc.vs.path)
+		os.exit(1)
+	}
+	if !frag_success {
+		fmt.eprintfln("Error reading fragment shader @ %s", desc.fs.path)
+		os.exit(1)
+	}
+
+	// Compile shader modules
 	vertex_module := create_shader_module(vertex_src)
 	fragment_module := create_shader_module(fragment_src)
+	// FIXME: "Unreachable defer statement due to diverging procedure call at end of the current scope"
+	// defer vk.DestroyShaderModule(ctx.device.ptr, vertex_module, nil)
+	// defer vk.DestroyShaderModule(ctx.device.ptr, fragment_module, nil)
 
 	shader_stages: [2]vk.PipelineShaderStageCreateInfo
 	shader_stages[0] = vk.PipelineShaderStageCreateInfo {
@@ -337,21 +470,65 @@ _pipeline_create :: proc(desc: GraphicsPipelineDesc) -> PipelineHandle {
 		pName  = "main",
 	}
 
+
+	handle, pipeline := utils.pool_alloc(&ctx.pipelines)
+	fmt.println("Allocated pipeline from pool")
+
+	pipeline_layout_info := vk.PipelineLayoutCreateInfo {
+		sType                  = .PIPELINE_LAYOUT_CREATE_INFO,
+		setLayoutCount         = 0,
+		pSetLayouts            = nil,
+		pushConstantRangeCount = 0,
+		pPushConstantRanges    = nil,
+	}
+	p_res := vk.CreatePipelineLayout(ctx.device.ptr, &pipeline_layout_info, nil, &pipeline.layout)
+	if p_res != .SUCCESS {
+		fmt.eprintln("Error creating pipeline layout")
+		os.exit(1)
+	}
+
+	// Dynamic Rendering
 	formats := []vk.Format{.R8G8B8A8_SRGB}
 	// https://lesleylai.info/en/vk-khr-dynamic-rendering/
 	rendering_create_info := vk.PipelineRenderingCreateInfo {
-		sType                   = .PIPELINE_RENDERING_CREATE_INFO,
+		sType                   = .PIPELINE_RENDERING_CREATE_INFO_KHR,
 		colorAttachmentCount    = 1,
 		pColorAttachmentFormats = raw_data(formats),
 	}
 
+	create_render_pass()
+
 	create_info := vk.GraphicsPipelineCreateInfo {
-		sType      = .GRAPHICS_PIPELINE_CREATE_INFO,
-		stageCount = 2,
-		renderPass = vk.RenderPass{}, // Empty since we're using dynamic rendering (it wont let us use nullptr/nil?)
+		sType               = .GRAPHICS_PIPELINE_CREATE_INFO,
+		renderPass          = vk.RenderPass{}, // Empty since we're using dynamic rendering (it wont let us use nullptr/nil?)
+		stageCount          = 2,
+		pStages             = &shader_stages[0],
+		pVertexInputState   = &vertex_input_info,
+		pInputAssemblyState = &input_assembly,
+		pViewportState      = &viewport_state,
+		pRasterizationState = &rasterizer_info,
+		pMultisampleState   = &multisample_info,
+		pDepthStencilState  = nil, // TODO
+		pColorBlendState    = &blend_info,
+		pDynamicState       = &dynamic_state_info,
+		pTessellationState  = nil,
+		layout              = pipeline.layout,
+		// subpass             = 0,
+		// basePipelineHandle  = vk.Pipeline{},
+		// basePipelineIndex   = -1,
+		pNext               = &rendering_create_info,
 	}
 
-	unimplemented()
+	fmt.println("About to create graphics pipeline")
+
+	res := vk.CreateGraphicsPipelines(ctx.device.ptr, 0, 1, &create_info, nil, &pipeline.handle)
+	if res != .SUCCESS {
+		fmt.eprintln("Error creating graphics pipeline")
+		os.exit(1)
+	}
+	fmt.println("Successfully created graphics pipeline")
+
+	return PipelineHandle(handle)
 }
 
 _encoder_create :: proc() -> CmdEncoder {
