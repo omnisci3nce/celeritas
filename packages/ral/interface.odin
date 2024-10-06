@@ -1,3 +1,5 @@
+// This file defines the RAL interface or abstraction as you consume it as an end-user. Internally we defer to
+// functions that are backend-specific i.e. implemented for Vulkan or Metal.
 package ral
 
 import "vendor:glfw"
@@ -7,15 +9,16 @@ backend_init :: proc(window: glfw.WindowHandle, width, height: int) {
 	_backend_init(window, width, height)
 }
 
+// Shutdown the RAL backend
 backend_shutdown :: proc() {
-	_backend_shutdown()
+	// _backend_shutdown()
+	// NOTE(Omni): for now we don't worry about cleanup and leave it as a no-op
 }
 
 // --- Buffers
 
-// Create a GPU buffer and return a handle to it
+// Create a buffer on the GPU and return a handle to it
 gpu_buffer_create :: proc(size: uint, type: BufferType, usage: BufferUsage, data: rawptr) -> BufferHandle {
-	// A for Anything
 	return _gpu_buffer_create(size, type, usage, data)
 }
 
@@ -24,7 +27,7 @@ gpu_buffer_destroy :: proc(handle: BufferHandle) {
 	_gpu_buffer_destroy(handle)
 }
 
-// Upload data to a GPU buffer
+// Upload bytes to a GPU buffer
 gpu_buffer_upload :: proc(handle: BufferHandle, data: []u8) {
 	_gpu_buffer_upload(handle, data)
 }
@@ -80,14 +83,18 @@ encode_draw_primitives :: proc(enc: ^CmdEncoder, primitive: PrimitiveTopology, c
 	unimplemented()
 }
 
+// Encodes a command to draw `count` triangles from a vertex buffer
 encode_draw_tris :: proc(enc: ^CmdEncoder, count: u64) {
 	encode_draw_primitives(enc, .Triangle, count)
 }
 
+// Encodes a command to draw triangles using an index buffer
 encode_draw_indexed_tris :: proc(enc: ^CmdEncoder, index_count: u64) {
 	unimplemented()
 }
 
+// Run a renderpass inside a function scope. Command buffer lifecycle is therefore that of the `recording` function
+// you provide.
 renderpass_run :: proc(rpass: RenderpassInfo, recording: proc(encoder: ^CmdEncoder)) -> CmdBuffer {
 	// 1. Create the command encoder
 	encoder := encoder_create()
@@ -103,7 +110,6 @@ renderpass_run :: proc(rpass: RenderpassInfo, recording: proc(encoder: ^CmdEncod
 
 	// NOTE: we don't need to worry about resetting the Command Buffer because at the beginning of every frame we will
 	//       reset the whole Command Pool
-	// unimplemented()
 	return CmdBuffer{}
 }
 
@@ -117,10 +123,12 @@ renderpass_finish :: proc(enc: ^CmdEncoder) {
 
 // --- Frame cycle
 
+// frame_start should be called at the beginning of your rendering routine each frame
 frame_start :: proc() {
 	_frame_start()
 }
 
+// frame_end should be called at the end of your rendering routine each frame
 frame_end :: proc() {
 	_frame_end()
 }
