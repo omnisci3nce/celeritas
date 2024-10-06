@@ -67,8 +67,7 @@ encoder_finish :: proc(enc: ^CmdEncoder) -> CmdBuffer {
 }
 
 bind_pipeline :: proc(enc: ^CmdEncoder, pipeline: PipelineHandle) {
-    // Currently a no-op
-    // TODO: hook this up to backend
+    _bind_pipeline(enc, pipeline)
 }
 
 encode_set_vertex_buf :: proc(enc: ^CmdEncoder, buffer: BufferHandle) {

@@ -3,35 +3,35 @@
 package ral
 
 // A unique handle to a `GPU_Buffer` resource allocated on a pool
-BufferHandle :: distinct u64
+BufferHandle :: distinct u32
 
 // A unique handle to a `GPU_Texture` resource allocated on a pool
-TextureHandle :: distinct u64
+TextureHandle :: distinct u32
 
-PipelineHandle :: distinct u64
+PipelineHandle :: distinct u32
 
 RenderpassInfo :: struct {
-  render_area_width: uint,
-  render_area_height: uint,
-  // TODO: color targets
-  // TODO: maybe depth target
+	render_area_width:  uint,
+	render_area_height: uint,
+	// TODO: color targets
+	// TODO: maybe depth target
 }
 
 // Describes a shader on-disk and how to load it
 ShaderDesc :: struct {
-  label: string,
-  path: string,
-  is_spirv: bool,
-  is_combined_vert_frag: bool
+	label:                 string,
+	path:                  string,
+	is_spirv:              bool,
+	is_combined_vert_frag: bool,
 }
 
 // Data required to create a [Pipeline] used for rendering
 GraphicsPipelineDesc :: struct {
-  label: string,
-  vertex_desc: VertexDescription,
-  vs: ShaderDesc,
-  fs: ShaderDesc,
-  shader_layouts: []ShaderDataLayout
+	label:          string,
+	vertex_desc:    VertexDescription,
+	vs:             ShaderDesc,
+	fs:             ShaderDesc,
+	shader_layouts: []ShaderDataLayout,
 }
 
 BufferType :: enum {
@@ -41,94 +41,94 @@ BufferType :: enum {
 }
 
 BufferUsage :: enum {
-  // GPU-only memory. Cannot be read from the CPU-side
+	// GPU-only memory. Cannot be read from the CPU-side
 	DeviceLocal,
-  // Host (CPU) visible. Can be read from the CPU-side but has slower performance for GPU operations
-  Shared
+	// Host (CPU) visible. Can be read from the CPU-side but has slower performance for GPU operations
+	Shared,
 }
 
 TextureType :: enum {
-  Tex2D,
-  Tex3D,
-  Tex2DArray,
-  TexCubeMap
+	Tex2D,
+	Tex3D,
+	Tex2DArray,
+	TexCubeMap,
 }
 
 TextureFormat :: enum {
-  RGBA_UNORM_8888,
-  RGB_UNORM_888,
-  DepthDefault
+	RGBA_UNORM_8888,
+	RGB_UNORM_888,
+	DepthDefault,
 }
 
 TextureDesc :: struct {
-  type: TextureType,
-  format: TextureFormat,
-  extents: [2]u32,
-  num_channels: u32
+	type:         TextureType,
+	format:       TextureFormat,
+	extents:      [2]u32,
+	num_channels: u32,
 }
 
 PrimitiveTopology :: enum {
-  Point,
-  Line,
-  LineStrip,
-  Triangle,
-  TriangleStrip
+	Point,
+	Line,
+	LineStrip,
+	Triangle,
+	TriangleStrip,
 }
 
 CullMode :: enum {
-  BackFace,
-  FrontFace
+	BackFace,
+	FrontFace,
 }
 
 Winding :: enum {
-  CCW, // Counter clockwise
-  CW   // Clockwise
+	CCW, // Counter clockwise
+	CW, // Clockwise
 }
 
 CompareFunc :: enum {
-  Never,
-  Less,
-  Equal,
-  LessEqual,
-  Greater,
-  NotEqual,
-  GreaterEqual,
-  Always
+	Never,
+	Less,
+	Equal,
+	LessEqual,
+	Greater,
+	NotEqual,
+	GreaterEqual,
+	Always,
 }
 
 // --- Vertex Attributes
 
 VertexAttribKind :: enum {
-  F32,
-  F32x2,
-  F32x3,
-  F32x4,
-  U32,
-  U32x2,
-  U32x3,
-  U32x4,
-  I32,
-  I32x2,
-  I32x3,
-  I32x4,
+	F32,
+	F32x2,
+	F32x3,
+	F32x4,
+	U32,
+	U32x2,
+	U32x3,
+	U32x4,
+	I32,
+	I32x2,
+	I32x3,
+	I32x4,
 }
 
 VertexAttrib :: struct {
-  label: string,
-  kind: VertexAttribKind
+	label: string,
+	kind:  VertexAttribKind,
 }
 
 VertexDescription :: struct {
-  label: string,
-  attributes: []VertexAttrib,
+	label:      string,
+	attributes: []VertexAttrib,
 }
 
 // --- Shaders
 
 ShaderVisibility :: enum {
-  Vertex,
-  Fragment,
-  Compute
+	Vertex,
+	Fragment,
+	Compute,
 }
 
 // Bitflags for the shader stages this data should be accessible from
@@ -181,7 +181,7 @@ ShaderDataLayout :: struct {
 //   #partial switch info in ti.variant {
 //     case runtime.Type_Info_Struct:
 //      return _bindings_for_struct(arena, v, info)
-//     case: 
+//     case:
 //       panic("Shaders can only be provided structs at the moment")
 //   }
 // }

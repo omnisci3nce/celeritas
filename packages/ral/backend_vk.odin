@@ -436,8 +436,6 @@ _pipeline_create :: proc(desc: GraphicsPipelineDesc) -> PipelineHandle {
 
 	handle, pipeline := utils.pool_alloc(&ctx.pipelines)
 	fmt.println("Allocated pipeline from pool")
-	// handle: vk.Pipeline
-	// layout: vk.PipelineLayout
 
 	pipeline_layout_info := vk.PipelineLayoutCreateInfo {
 		sType                  = .PIPELINE_LAYOUT_CREATE_INFO,
@@ -446,13 +444,7 @@ _pipeline_create :: proc(desc: GraphicsPipelineDesc) -> PipelineHandle {
 		pushConstantRangeCount = 0,
 		pPushConstantRanges    = nil,
 	}
-	p_res := vk.CreatePipelineLayout(
-		ctx.device.ptr,
-		&pipeline_layout_info,
-		nil,
-		&pipeline.layout
-		// &layout,
-	)
+	p_res := vk.CreatePipelineLayout(ctx.device.ptr, &pipeline_layout_info, nil, &pipeline.layout)
 	if p_res != .SUCCESS {
 		fmt.println("Error creating pipeline layout")
 		os.exit(1)
@@ -472,7 +464,6 @@ _pipeline_create :: proc(desc: GraphicsPipelineDesc) -> PipelineHandle {
 	create_info := vk.GraphicsPipelineCreateInfo {
 		sType               = .GRAPHICS_PIPELINE_CREATE_INFO,
 		renderPass          = vk.RenderPass{}, // Empty since we're using dynamic rendering (it wont let us use nullptr/nil?)
-		// renderPass          = ctx.renderpass,
 		stageCount          = 2,
 		pStages             = raw_data(&shader_stages),
 		pVertexInputState   = &vertex_input_info,
@@ -485,24 +476,13 @@ _pipeline_create :: proc(desc: GraphicsPipelineDesc) -> PipelineHandle {
 		pDynamicState       = &dynamic_state_info,
 		pTessellationState  = nil,
 		layout              = pipeline.layout,
-		// layout              = layout,
 		subpass             = 0,
-		// basePipelineHandle  = vk.Pipeline{},
-		// basePipelineIndex   = -1,
-		// pNext               = &rendering_create_info,
+		pNext               = &rendering_create_info,
 	}
 
 	fmt.println("About to create graphics pipeline")
 
-	res := vk.CreateGraphicsPipelines(
-		ctx.device.ptr,
-		0,
-		1,
-		&create_info,
-		nil,
-		&pipeline.handle
-		// &handle,
-	)
+	res := vk.CreateGraphicsPipelines(ctx.device.ptr, 0, 1, &create_info, nil, &pipeline.handle)
 	if res != .SUCCESS {
 		fmt.eprintln("Error creating graphics pipeline")
 		os.exit(1)
@@ -510,6 +490,11 @@ _pipeline_create :: proc(desc: GraphicsPipelineDesc) -> PipelineHandle {
 	fmt.println("Successfully created graphics pipeline")
 
 	return PipelineHandle(handle)
+}
+
+_bind_pipeline :: proc(enc: ^CmdEncoder, pipeline: PipelineHandle) {
+	p := utils.pool_get(&ctx.pipelines, u32(pipeline))
+	vk.CmdBindPipeline(enc.cmd_buffer, .GRAPHICS, p.handle)
 }
 
 _encoder_create :: proc() -> CmdEncoder {
