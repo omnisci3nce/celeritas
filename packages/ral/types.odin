@@ -135,21 +135,23 @@ ShaderVisibility :: enum {
 ShaderVisSet :: bit_set[ShaderVisibility]
 
 ShaderBinding :: struct {
-  label: string,
-  visibility: ShaderVisSet,
-  data: union {
-    Bytes_Data,
-    Buffer_Data,
-    Texture_Data
-  }
+	label:      string,
+	visibility: ShaderVisSet,
+	data:       union {
+		BytesBinding,
+		BufferBinding,
+		TextureBinding,
+	},
 }
 
-Bytes_Data :: struct {}
-Buffer_Data :: struct {}
-Texture_Data :: struct {}
+BytesBinding :: struct {
+	size: u32, // Size of the buffer in bytes
+}
+BufferBinding :: struct {}
+TextureBinding :: struct {}
 
 ShaderDataLayout :: struct {
-  bindings: []ShaderBinding
+	bindings: []ShaderBinding,
 }
 
 // Example code for the purposes of API brainstorming
