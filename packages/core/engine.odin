@@ -5,14 +5,11 @@ import "core:c"
 import "core:fmt"
 import "vendor:glfw"
 
-WINDOW_WIDTH :: 1000
-WINDOW_HEIGHT :: 1000
-
 Engine :: struct {
 	window: glfw.WindowHandle,
 }
 
-engine_init :: proc(engine: ^Engine) {
+engine_init :: proc(engine: ^Engine, window_width: int, window_height: int) {
 	fmt.println("Engine init")
 
 	if !glfw.Init() {
@@ -26,19 +23,13 @@ engine_init :: proc(engine: ^Engine) {
 	}
 	fmt.println("Created window")
 
-	engine.window = glfw.CreateWindow(
-		WINDOW_WIDTH,
-		WINDOW_HEIGHT,
-		"Celeritas Engine Test",
-		nil,
-		nil,
-	)
+	engine.window = glfw.CreateWindow(i32(window_width), i32(window_height), "Celeritas Engine Test", nil, nil)
 	if engine.window == nil {
 		fmt.println("Unable to create window")
 		return
 	}
 
-	ral.backend_init(engine.window)
+	ral.backend_init(engine.window, window_width, window_height)
 	fmt.println("Initialised RAL backend")
 
 	glfw.MakeContextCurrent(engine.window)
@@ -46,6 +37,8 @@ engine_init :: proc(engine: ^Engine) {
 
 	glfw.SetKeyCallback(engine.window, handle_keys)
 }
+
+engine_shutdown :: proc(engine: ^Engine) {}
 
 handle_keys :: proc "c" (window: glfw.WindowHandle, key: i32, scancode: i32, action: i32, mods: i32) {
 	if key == glfw.KEY_ESCAPE {

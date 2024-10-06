@@ -46,7 +46,7 @@ cube_geo :: proc(extents: Vec3) -> Geometry {
 					tex_coords = Vec2{0, 0},
 				},
 			)
-			indices[vertex_index] = u32(vertex_index)
+			append(&indices, u32(vertex_index))
 			vertex_index += 1
 		}
 	}
