@@ -1,4 +1,4 @@
-//+build windows, linux
+#+build windows, linux
 package ral
 
 import "../../deps/vkb"
