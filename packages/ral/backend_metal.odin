@@ -28,7 +28,7 @@ GPU_Texture :: struct {}
 
 Pipeline :: struct {}
 
-_backend_init :: proc(window: glfw.WindowHandle) {
+_backend_init :: proc(window: glfw.WindowHandle, width, height: u32) {
 	// Create device
 	ctx.device = MTL.CreateSystemDefaultDevice()
 	// Create command queue

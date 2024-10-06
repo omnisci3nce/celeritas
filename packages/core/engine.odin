@@ -29,7 +29,7 @@ engine_init :: proc(engine: ^Engine, window_width: int, window_height: int) {
 		return
 	}
 
-	ral.backend_init(engine.window)
+	ral.backend_init(engine.window, window_width, window_height)
 	fmt.println("Initialised RAL backend")
 
 	glfw.MakeContextCurrent(engine.window)

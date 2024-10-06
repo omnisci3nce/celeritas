@@ -81,13 +81,13 @@ render_init :: proc(engine: ^core.Engine) {
     },
     vs = {
         label = "Triangle Vertex Shader",
-        path = "assets/tri.vert",
+        path = "assets/tri.vert.spv",
         is_spirv = false,
         is_combined_vert_frag = false,
     },
     fs = {
         label = "Triangle Fragment Shader",
-        path = "assets/tri.frag",
+        path = "assets/tri.frag.spv",
         is_spirv = false,
         is_combined_vert_frag = false,
     },

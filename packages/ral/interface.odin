@@ -3,8 +3,8 @@ package ral
 import "vendor:glfw"
 
 // Initialise the RAL backend
-backend_init :: proc(window: glfw.WindowHandle) {
-	_backend_init(window)
+backend_init :: proc(window: glfw.WindowHandle, width, height: int) {
+	_backend_init(window, width, height)
 }
 
 backend_shutdown :: proc() {
@@ -64,7 +64,8 @@ encoder_finish :: proc(enc: ^CmdEncoder) -> CmdBuffer {
 }
 
 bind_pipeline :: proc(enc: ^CmdEncoder, pipeline: PipelineHandle) {
-	// unimplemented()
+    // Currently a no-op
+    // TODO: hook this up to backend
 }
 
 encode_set_vertex_buf :: proc(enc: ^CmdEncoder, buffer: BufferHandle) {
