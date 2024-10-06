@@ -5,6 +5,7 @@ import "core:time"
 import "vendor:glfw"
 import "../packages/core"
 import "../packages/ral"
+import "../packages/draw"
 
 WINDOW_WIDTH :: 1000
 WINDOW_HEIGHT :: 1000
